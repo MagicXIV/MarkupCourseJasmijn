@@ -1,0 +1,90 @@
+---
+title: "Second Presentation"
+author: "Jasmijn Bazen"
+editor: visual
+format:
+  revealjs:
+    logo: UU_logo.png
+    footer: "Jasmijn Bazen, ORCID: 0009-0008-5583-4236"
+    slide-number: true
+    mathjax: true
+bibliography: references.bib
+---
+
+## A centered still figure
+
+![A dog eating ice-cream](dog_eating_ice_cream.jpg){fig-align="center"}
+
+## An interactive table :O
+
+```{r, include=FALSE}
+library(renv)
+renv::init()
+```
+
+```{r}
+library(DT)
+data(iris)
+datatable(iris,
+  filter = "top",
+  options = list(pageLength = 4
+))
+```
+
+## 2 columns!
+
+::: columns
+::: {.column width="50%"}
+![Another dog eating ice cream :)](dog_eating_ice_cream_again.gif){fig-align="left" width="90%"} ![Another dog eating ice cream :)](dog_eating_ice_cream_again.gif){fig-align="center" width="90%"}
+:::
+
+::: {.column width="50%"}
+<center>![Another dog eating ice cream :)](dog_eating_ice_cream_again.gif){fig-align="center" width="90%"} ![Another dog eating ice cream :)](dog_eating_ice_cream_again.gif){fig-align="center" width="90%"}</center>
+:::
+:::
+
+## An aligned multi-row equation
+
+$$ 
+\begin{align}
+  \phantom{i + j + k}
+  &\begin{aligned}
+    a &= b + c + d\\
+      &\qquad + e + f + g + x + y + z
+  \end{aligned}\\
+  &\begin{aligned}
+    i &= l + m + n\\
+      &\qquad + o + p + q
+  \end{aligned}
+\end{align}
+$$
+
+## A citation
+
+We will use the renv-package shortly [@renv].
+
+## Some R code
+
+Displayed, but not executed
+
+```{r, echo=T, results='hide'}
+4+4
+```
+
+## Cached and labelled R-code (executed, but not displayed)
+
+```{r, echo=FALSE, cache=TRUE}
+library(ggplot2)
+ggplot(iris, aes(x = Sepal.Length, y = Sepal.Width, color = Species)) +
+  geom_point(alpha = 0.5, size = 2) +
+  theme_minimal()
+```
+
+## an `renv` reproducible environment
+```{r, include=TRUE, echo=TRUE}
+renv::snapshot()
+renv::remove("ggplot2")
+renv::restore()
+```
+
+## References (a bibliographic reference)

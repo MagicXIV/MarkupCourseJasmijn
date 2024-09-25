@@ -1,0 +1,22 @@
+---
+title: "My First Quarto Presentation"
+author: "Jasmijn Bazen, \\
+ORCID: 0009-0008-5583-4236"
+editor: visual
+format:
+  revealjs:
+    logo: UU_logo.png
+    footer: "Jasmijn Bazen, ORCID: 0009-0008-5583-4236"
+---
+
+## My favourite equation
+
+Sample variance:
+
+$$
+s^2 = \frac{\sum^n_{j=1} (x_{i}-\bar{x})^2}{n-1}
+$$
+
+## My source of information
+
+[My LinkedIn](https://www.linkedin.com/in/jasmijn-bazen/)
