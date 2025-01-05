@@ -1,0 +1,519 @@
+---
+title: "My Reproducible Manuscript"
+author: "Jasmijn Bazen"
+format: 
+ pdf: default
+bibliography: ../docs/references.bib
+runtime: shiny
+---
+
+# R CODE
+### *Of a small scale intermediate study to investigate the impact of motivation on the results of students partaking in the PISA test.*
+
+## Word of thanks: 
+I would like to thank my supervisors, Remco Feskens and Marieke van Onna for all the input they gave me throughout the making of this research report. 
+
+
+## Load Libraries:
+```{r message=FALSE, warning=FALSE}
+# Package names
+packages <- c("tidyverse", "haven", "dplyr", "tidyr", "lavaan", "lavaanPlot", "shiny", "ggplot2", "DiagrammeR", "DiagrammeRsvg", "rsvg")
+
+# Install packages not yet installed
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# Packages loading
+invisible(lapply(packages, library, character.only = TRUE))
+```
+
+## Read in data:
+```{r message=FALSE}
+rm(list = ls())
+data <- readRDS("../data/pisa18_m.RDS")
+data <- data.frame(data)
+```
+
+For now, only 1 booklet & 2 countries will be used: The Netherlands and Germany, and booklet 7. 
+```{r filter smaller dataset}
+#filter NL AND DE
+# unique(data$CNT)
+data <- data %>% 
+  filter(CNT == "NLD" | CNT == "DEU")
+
+#filter booklet number 7
+# unique(data$BOOKID)
+data <- data %>% 
+  filter(BOOKID == 7)
+```
+
+Change response time to seconds, instead of milliseconds
+```{r response time to seconds}
+data <- data %>%
+  mutate(response_time = (data$response_time/1000))
+```
+
+Make a unique student identifier
+```{r unique student identifier}
+data <- data %>% 
+  mutate(person_id = paste(CNTSCHID, CNTSTUID, sep = "_"))
+```
+
+Make missing_counts and total_items variables
+```{r add missing counts to data}
+#see which responses there are
+unique(data$response) # -> "No Response" & "Not Reached"
+
+#make missing counts per person based on these 
+missing_counts <- data %>%
+  group_by(person_id) %>%
+  summarise(missing_items = sum(response %in% c("No Response", "Not Reached")), .groups = "drop")
+
+#add missing counts to data 
+data <- data %>%
+  left_join(missing_counts, by = "person_id") 
+
+#add how many questions they had to answer
+total_items <- data %>%
+  group_by(person_id) %>%
+  summarise(
+    total_items = n())
+
+data <- data %>%
+  left_join(total_items, by = "person_id")
+```
+
+
+# Descriptive analyses
+
+## Looking into NAs
+### Per country
+```{r total missing items total and per country plots}
+summary(data$missing_items)
+boxplot(data$missing_items)
+
+#countries combined
+ggplot(data, aes(x = missing_items)) +
+  geom_histogram(aes(y = ..count.. / 23), binwidth = 1, fill = "blue", color = "black") +
+  labs(
+    title = "Distribution of Total Missing Items per Person",
+    x = "Number of Missing Items",
+    y = "Frequency"
+  ) +
+  theme_minimal()
+
+country_labels <- c("DEU" = "Germany", "NLD" = "The Netherlands")
+#countries separately 
+ggplot(data, aes(x = missing_items)) +
+  geom_histogram(aes(y = ..count.. / 23), binwidth = 1, fill = "blue", color = "black") +
+  labs(
+    title = "Distribution of Missing Items per Person by Country",
+    x = "Number of Missing Items",
+    y = "Frequency"
+  ) +
+  facet_wrap(~ CNT, scales = "free_y", labeller = labeller(CNT = country_labels)) + 
+  theme_minimal()
+
+#now in table format
+data %>%
+  group_by(CNT, missing_items) %>%
+  summarise(frequency = n() / 23, .groups = "drop")
+```
+## Save figure: *(Please note: this is an optional step, this figure is already present in the results folder)*
+```{r}
+ggsave(filename = "../results/DistrMissingPerCountry.tif", plot = last_plot(), device = "tiff")
+```
+
+
+Perform t-test (normally distr. data) and Mann-Whitney U Test / Wilcoxon Rank-Sum Test (medians instead of means -> non-parametric); to see whether there is a significant difference between the 2 countries on their distributions of the missing items. 
+```{r}
+NL <- subset(data, CNT == "NLD")
+DE <- subset(data, CNT == "DEU")
+
+NL <- NL %>% 
+  select(person_id, missing_items) %>% 
+  distinct()
+DE <- DE %>% 
+  select(person_id, missing_items) %>% 
+  distinct()
+
+t.test(NL$missing_items, DE$missing_items)
+wilcox.test(NL$missing_items, DE$missing_items)
+```
+
+
+### Per item
+```{r missing items per question plot}
+data <- data %>%
+  mutate(item_type_open = case_when(
+    item_type %in% c("Open Response - Computer Scored", "Open Response - Human Coded") ~ "Open Response",
+    TRUE ~ item_type  # Retain original value for other cases
+  ))
+
+data <- data %>%
+  mutate(item_type_open = case_when(
+    item_type_open %in% c("Simple Multiple Choice - Computer Scored") ~ "Simple Multiple Choice", 
+    TRUE ~ item_type_open
+  ))
+
+data <- data %>%
+  mutate(item_type_open = case_when(
+    item_type_open %in% c("Complex Multiple Choice - Computer Scored") ~ "Complex Multiple Choice", 
+    TRUE ~ item_type_open
+  ))
+
+item_missing_counts <- data %>%
+  group_by(item_id, item_type_open, cluster_positie, sequence_in_cluster) %>%
+  summarise(
+    missing_answers = (sum(response %in% c("No Response", "Not Reached")) / n_distinct(person_id)) * 100,
+    .groups = "drop"
+  )
+
+# Arrange based on cluster_positie and sequence_in_cluster and reorder item_id
+item_missing_counts <- item_missing_counts %>%
+  arrange(cluster_positie, sequence_in_cluster) %>%
+  mutate(item_id = factor(item_id, levels = unique(item_id[order(cluster_positie, sequence_in_cluster)])))
+
+
+ggplot(item_missing_counts, aes(x = item_id, y = missing_answers, fill = item_type_open)) +
+  geom_bar(stat = "identity", color = "black") +
+  labs(
+    title = "Percentage of Missing Answers per Item",
+    x = "Item ID",
+    y = "Percentage of Missing Answers",
+    fill = "Item Type"  # Add legend title for item_type
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Total scores
+
+Amount of questions in this booklet 
+```{r how many questions}
+summary(data %>% 
+  group_by(person_id) %>% 
+  count())
+```
+
+### Plotting total score distribution
+```{r Total Score Distribution plot}
+#make total scores
+total_scores <- data %>% 
+  group_by(person_id) %>% 
+  summarise(total_score = sum(item_score))
+
+#add to dataset
+data <- data %>%
+  left_join(total_scores, by = "person_id")
+
+ggplot(total_scores, aes(x = total_score)) +
+  geom_histogram(binwidth = 1, fill = "blue", color = "black") +
+  labs(title = "Total Score Distribution", x = "Total Score", y = "Frequency")
+
+item_difficulty <- (data %>%
+  group_by(item_id) %>%
+  summarise(max_score = max(item_score))) #assuming at least one student received full points on the item
+
+sum(item_difficulty$max_score)
+```
+Maximum score is 26. No one got full points, or even one below full points. 
+
+If you want, you can run the code below and play around with the bin-width of this plot, and the previous plot on missing items per person, in a shiny-app: 
+```{r}
+ui1 <- fluidPage(
+  titlePanel("Interactive Plots"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("plot_type", "Choose a Plot:",
+                  choices = c("Missing Items per Person", "Total Score Distribution")),
+      sliderInput("binwidth", "Binwidth:", min = 1, max = 10, value = 2)
+    ),
+    mainPanel(
+      plotOutput("main_plot")
+    )
+  )
+)
+
+server1 <- function(input, output) {
+  output$main_plot <- renderPlot({
+    if (input$plot_type == "Missing Items per Person") {
+      ggplot(data, aes(x = missing_items)) +
+        geom_histogram(binwidth = input$binwidth, fill = "blue", color = "black") +
+        labs(title = "Missing Items per Person", x = "Number of Missing Items", y = "Frequency") +
+        theme_minimal()
+    } else if (input$plot_type == "Total Score Distribution") {
+      ggplot(total_scores, aes(x = total_score)) +
+        geom_histogram(binwidth = input$binwidth, fill = "blue", color = "black") +
+        labs(title = "Total Score Distribution", x = "Total Score", y = "Frequency") +
+        theme_minimal()
+    }
+  })
+}
+
+shinyApp(ui1, server1)
+```
+
+
+Now lets look at how many points were scored on each item.
+```{r}
+item_difficulty_scores <- data %>% 
+  group_by(item_id) %>%
+  summarise(average_score = mean(item_score), 
+            max_score = max(item_score)) %>%
+  mutate(difficulty = average_score / max_score)
+
+ggplot(item_difficulty_scores, aes(x = item_id, y = difficulty)) +
+  geom_bar(stat = "identity", fill = "blue", color = "black") +
+  labs(
+    title = "Item Easiness per Item",
+    x = "Item ID",
+    y = "Item Easiness"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+I wanted to add this difficulty plot to the missings plot per item:
+```{r overlapping plot}
+data_temporary <- item_missing_counts %>%
+  left_join(item_difficulty_scores, by = "item_id")
+
+
+data_temporary <- data_temporary %>%
+  arrange(cluster_positie, sequence_in_cluster) %>%
+  mutate(item_id = factor(item_id, levels = unique(item_id[order(cluster_positie, sequence_in_cluster)])))
+
+data_temporary$item_type_open <- as.factor(data_temporary$item_type_open)
+
+ggplot(data_temporary, aes(x = missing_answers, y = difficulty, color = item_type_open)) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(
+    title = "Item Easiness vs. Missing Answers",
+    x = "Missing Answers (%)",
+    y = "Item Easiness",
+    color = "Type of Question"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+## Save figure: *(Please note: this is an optional step, this figure is already present in the results folder)*
+```{r}
+ggsave(filename = "../results/ItemEasinessVsMissingValues.tif", plot = last_plot(), device = "tiff")
+```
+
+
+Keep in mind, officially our item easiness is called the item's difficulty. Therefore, in the code, you see names for variables like `difficulty` and `item_difficulty_scores`, however, these are high when an item is easy, so we renamed it for the plots.
+If an item is very difficult (indicated by low easiness score), we expect the missings to be high (high red bar). This is the general pattern we see.
+But is this due to people not answering, and thus the average score going down and therefore a high difficulty? Or because the question is difficult, and therefore people don't answer it? It is of course remarkable that some questions are clearly not favourites. It is of course also fun to see that the very first question in the first cluster is answered so often.  
+
+
+# "Quantify" motivation
+
+I'll make dummy variables where 1 indicates a *low* motivation. + the EFFORT1 variable 
+
+### response times
+```{r make extreme response time variables}
+summary(data$response_time)
+
+#make dummies for if a question was answered with too little (<5sec) or too much (>5min) time
+data <- data %>% 
+  mutate(
+    little_time = ifelse(response_time < 5, 1, 0),
+    much_time = ifelse(response_time > 300, 1, 0),
+    )
+
+#see if they're roughly the same size, not one of 5 and the other of 500
+data %>%
+  summarise(
+    little_time = sum(little_time, na.rm = TRUE),
+    much_time = sum(much_time, na.rm = TRUE)
+  )
+#almost the same (!)
+
+#now aggregate them on person level
+total_time_scores <- data %>% 
+  group_by(person_id) %>% 
+  summarise(total_little_time = sum(little_time), 
+            total_much_time = sum(much_time))
+data <- data %>%
+  left_join(total_time_scores, by = "person_id")
+
+data$total_little_time <- as.factor(data$total_little_time)
+data$total_much_time <- as.factor(data$total_much_time)
+```
+
+
+Delete people with missing response times
+```{r delete missing response times}
+#see how many will be deleted
+sum(is.na(data$response_time)) 
+
+#delete them
+data <- data %>% 
+  filter(!is.na(response_time))
+```
+30 people deleted
+
+
+# Structural Equation Modelling (SEM) 
+
+Make sure all the variables have the correct format and distributions
+```{r make variables correct format}
+#change so that values on EFFORT1 above 10 are an NA like intended
+data <- data %>%
+  mutate(EFFORT1 = ifelse(as.numeric(EFFORT1) > 10, NA, EFFORT1))
+
+#make certain variables factors instead of numerical 
+data <- data %>%
+  mutate(across(c(CNTSCHID, CNTSTUID, BOOKID, ST004D01T, ST019AQ01T, ST127Q03TA, IMMIG), as.factor)) #added missing_items so that it won't be standardised 
+
+data <- data %>%
+  mutate(across(c(missing_items, EFFORT1, total_little_time, total_much_time), as.integer)) #added missing_items so that it won't be standardised 
+
+#Standardize numerical variables
+data <- data %>%
+  mutate(across(where(is.numeric), ~ scale(.) %>% as.vector()))
+
+#change all character variables to factors
+data[sapply(data, is.character)] <- lapply(data[sapply(data, is.character)], as.factor)
+
+```
+
+Divide data up in 2 sets, one for each country
+```{r 2 datasets}
+#split data up in 2
+NLdata <- data %>%
+  filter(CNT == "NLD")
+DEdata <- data %>%
+  filter(CNT == "DEU")
+```
+
+The SEM model
+```{r specify SEM models}
+model <- '
+  # measurement model
+  Motivation =~ response_time + total_little_time + total_much_time + EFFORT1 + missing_items
+    Ability =~ PV1MATH 
+  # regressions
+    Ability ~ Motivation
+  # residual correlations
+'
+
+NLfit <- sem(model, data = NLdata)
+summary(NLfit, fit.measures = TRUE, standardized = TRUE)
+lavInspect(NLfit)
+
+# Plot the essence of the SEM model
+lavaanPlot(
+    model = NLfit,
+    coefs = FALSE,          # Do not show path coefficients
+    stand = FALSE,          # Do not use standardized coefficients
+    stars = NULL,           # No significance stars
+    covs = FALSE            # Suppress covariance paths
+)
+
+DEfit <- sem(model, data = DEdata)
+summary(DEfit, fit.measures = TRUE, standardized = TRUE)
+lavInspect(DEfit)
+
+#plot the SEM model on the data of the Dutch students
+lavaanPlot(
+  model = NLfit,
+  coefs = TRUE,      # Show path coefficients
+  stand = TRUE,      # Standardized coefficients
+  sig = 0.05,        # Display significance levels
+  stars = "regress"  # Add significance stars to regressions
+)
+
+#plot the SEM model on the data of the German students
+lavaanPlot(
+  model = DEfit,
+  coefs = TRUE,      # Show path coefficients
+  stand = TRUE,      # Standardized coefficients
+  sig = 0.05,        # Display significance levels
+  stars = "regress"  # Add significance stars to regressions
+)
+```
+If you want, you can save the plots by running the next code chunk. Please note: they are already in the results folder as well:
+```{r}
+# Function to fit the SEM model, generate the plot, and save it
+save_sem_plots <- function(fit, file_name) {
+  sem_plot <- lavaanPlot(
+    model = fit,
+    coefs = TRUE,      # Show path coefficients
+    stand = TRUE,      # Standardized coefficients
+    sig = 0.05,        # Display significance levels
+    stars = "regress"  # Add significance stars to regressions
+  )
+  
+  # Save as SVG and convert to TIFF
+  svg_file <- tempfile(fileext = ".svg")
+  export_svg(sem_plot) %>% writeLines(svg_file)
+  rsvg_png(svg_file, file_name) 
+}
+
+# Save the plots
+save_sem_plots(NLfit, "../results/SEMModelNL.png")
+save_sem_plots(DEfit, "../results/SEMModelDE.png")
+```
+
+
+```{r}
+# Function to generate lavaanPlot
+generate_sem_plot <- function(fit_object) {
+  lavaanPlot(
+  model = fit_object,
+  coefs = TRUE,      # Show path coefficients
+  stand = TRUE,      # Standardized coefficients
+  sig = 0.05,        # Display significance levels
+  stars = "regress"  # Add significance stars to regressions
+)
+}
+
+# Define UI
+ui2 <- fluidPage(
+  titlePanel("SEM Model Viewer"),
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("dataset", "Select Dataset:", 
+                  choices = c("Dutch (NL)", "German (DE)"))
+    ),
+    mainPanel(
+      plotOutput("semPlot")
+    )
+  )
+)
+
+# Define Server
+# Define Server
+server2 <- function(input, output) {
+  output$semPlot <- renderPlot({
+    if (input$dataset == "Dutch (NL)") {
+      lavaanPlot(
+        model = NLfit,
+        coefs = TRUE,      # Show path coefficients
+        stand = TRUE,      # Standardized coefficients
+        sig = 0.05,        # Display significance levels
+        stars = "regress"  # Add significance stars to regressions
+      )
+    } else if (input$dataset == "German (DE)") {
+      lavaanPlot(
+        model = DEfit,
+        coefs = TRUE,      # Show path coefficients
+        stand = TRUE,      # Standardized coefficients
+        sig = 0.05,        # Display significance levels
+        stars = "regress"  # Add significance stars to regressions
+      )
+    }
+  })
+}
+
+# Run the app
+shinyApp(ui = ui2, server = server2)
+```
+
+
+### This is the end of the R code! 
