@@ -407,7 +407,7 @@ summary(NLfit, fit.measures = TRUE, standardized = TRUE)
 lavInspect(NLfit)
 
 # Plot the essence of the SEM model
-lavaanPlot(
+EmptyPlot <- lavaanPlot(
     model = NLfit,
     coefs = FALSE,          # Do not show path coefficients
     stand = FALSE,          # Do not use standardized coefficients
@@ -420,7 +420,7 @@ summary(DEfit, fit.measures = TRUE, standardized = TRUE)
 lavInspect(DEfit)
 
 #plot the SEM model on the data of the Dutch students
-lavaanPlot(
+NLPlot <- lavaanPlot(
   model = NLfit,
   coefs = TRUE,      # Show path coefficients
   stand = TRUE,      # Standardized coefficients
@@ -429,7 +429,7 @@ lavaanPlot(
 )
 
 #plot the SEM model on the data of the German students
-lavaanPlot(
+DEPlot <- lavaanPlot(
   model = DEfit,
   coefs = TRUE,      # Show path coefficients
   stand = TRUE,      # Standardized coefficients
@@ -437,6 +437,7 @@ lavaanPlot(
   stars = "regress"  # Add significance stars to regressions
 )
 ```
+
 If you want, you can save the plots by running the next code chunk. Please note: they are already in the results folder as well:
 ```{r}
 # Function to fit the SEM model, generate the plot, and save it
@@ -453,6 +454,19 @@ save_sem_plots <- function(fit, file_name) {
   svg_file <- tempfile(fileext = ".svg")
   export_svg(sem_plot) %>% writeLines(svg_file)
   rsvg_png(svg_file, file_name) 
+}
+
+# Function to save an existing plot as a PNG file
+save_existing_plot <- function(plot, file_name) {
+  # Export the plot to an SVG format as a string
+  svg_file <- tempfile(fileext = ".svg")
+  export_svg(plot) %>% writeLines(svg_file)
+  
+  # Convert the SVG to a PNG file
+  rsvg_png(svg_file, file_name)
+  
+  # Optional: Inform user where the file is saved
+  cat("File saved to:", normalizePath(file_name), "\n")
 }
 
 # Save the plots
