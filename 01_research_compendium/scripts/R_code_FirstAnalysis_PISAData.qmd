@@ -8,7 +8,7 @@ runtime: shiny
 ---
 
 # R CODE
-### *Of a small scale intermediate study to investigate the impact of motivation on the results of students partaking in the PISA test.*
+### R code of a small scale intermediate study to investigate the impact of motivation on the results of students partaking in the PISA test.
 
 ## Word of thanks: 
 I would like to thank my supervisors, Remco Feskens and Marieke van Onna for all the input they gave me throughout the making of this research report. 
@@ -16,17 +16,11 @@ I would like to thank my supervisors, Remco Feskens and Marieke van Onna for all
 
 ## Load Libraries:
 ```{r message=FALSE, warning=FALSE}
-# Package names
-packages <- c("tidyverse", "haven", "dplyr", "tidyr", "lavaan", "lavaanPlot", "shiny", "ggplot2", "DiagrammeR", "DiagrammeRsvg", "rsvg")
-
-# Install packages not yet installed
-installed_packages <- packages %in% rownames(installed.packages())
-if (any(installed_packages == FALSE)) {
-  install.packages(packages[!installed_packages])
-}
-
-# Packages loading
-invisible(lapply(packages, library, character.only = TRUE))
+if (!require("renv")) {
+    install.packages("renv", dependencies = TRUE)
+    library(renv)
+  }
+renv::restore()
 ```
 
 ## Read in data:
@@ -436,6 +430,9 @@ DEPlot <- lavaanPlot(
   sig = 0.05,        # Display significance levels
   stars = "regress"  # Add significance stars to regressions
 )
+
+
+saveLavaanPlot(NLfit, "../results/SEMModelNL.png")
 ```
 
 If you want, you can save the plots by running the next code chunk. Please note: they are already in the results folder as well:
@@ -454,19 +451,6 @@ save_sem_plots <- function(fit, file_name) {
   svg_file <- tempfile(fileext = ".svg")
   export_svg(sem_plot) %>% writeLines(svg_file)
   rsvg_png(svg_file, file_name) 
-}
-
-# Function to save an existing plot as a PNG file
-save_existing_plot <- function(plot, file_name) {
-  # Export the plot to an SVG format as a string
-  svg_file <- tempfile(fileext = ".svg")
-  export_svg(plot) %>% writeLines(svg_file)
-  
-  # Convert the SVG to a PNG file
-  rsvg_png(svg_file, file_name)
-  
-  # Optional: Inform user where the file is saved
-  cat("File saved to:", normalizePath(file_name), "\n")
 }
 
 # Save the plots
