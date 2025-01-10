@@ -1,8 +1,8 @@
-# An Actually Reproducible Simulation Study in RStudio
+# A Reproducible First Analysis of PISA Data in RStudio
 By: Jasmijn Bazen
-Date of creation: 08/11/2024
+Date of creation: 10/01/2025
 
-Purpose: To show what an actual nicely reproducible simulation study entails. So no changing code to specify working directory, no downloading of extra files etc. 
+Purpose: TO have a fully reproducible study on a subset of the PISA dataset. No changing code to specify working directory, no downloading of extra files. Possibly needing to run the last 3 lines of code in the console instead due to the package being used. 
 
 Software versions: 
 General:
@@ -11,39 +11,41 @@ Platform: x86_64-w64-mingw32/x64 (64-bit)
 Running under: Windows 11 x64 (build 22631)
 R Packages:
 tidyverse_2.0.0
-mice_3.16.0
-Hmisc_5.1-1 
+haven_2.5.4
+dplyr_1.1.4
+tidyr_1.3.1
+lavaan_0.6.19
+lavaanPlot_0.8.1
+shiny_1.8.1.1
+ggplot2_3.4.4
+devtools_2.4.5
+saveLavaanPlot_0.2.2
 
 
 # The folder structure
 
-Compendium/
+01_research_compendium/
 ├── data
-│   ├── BMX_I.XPT
-│   ├── BPX_I.XPT
-│   ├── DEMO_I.XPT
-│   ├── GHB_I.XPT
-│   └── TCHOL_XPT
+│   └── pisa18_m.RDS
 ├── docs
 │   └── references.bib
 ├── results
-│   └── Figure_STRATOS
+│   ├── DistrMissingPerCountry.tif
+│   ├── EmptySEMModel.png
+│   ├── ItemEasinessVsMissingValues.tif
+│   ├── SEMModelDE.png
+│   └── SEMModelNL.png
 ├── scripts
-│   └── R_code_reprodicibilty.qmd
+│   └── R_code_FirstAnalysis_PISAData.qmd
+├── 01_research_compendium.Rproj
 ├── LICENSE.md
-├── R_project_reproducibility.Rproj
 └── README.md
 
-All data, the references.bib, the LICENSE.md, the R_project_reproducibility.Rproj and the README.md are read only.
+The data, the references.bib, the LICENSE.md, the R_code_FirstAnalysis_PISAData.qmd and the README.md are read only.
 The code is human-generated.
-The figure in the results folder is project-generated. 
+The figures in the results folder are project-generated. 
 
 
 How to use:
-Start up the R_project_reproducibility.Rproj file in RStudio. Open the R_code_reprodicibilty.qmd file in this project space. You can now run the code in the .qmd file and reproduce the research! 
-
-
-
-
-
-
+Start up the R_code_FirstAnalysis_PISAData.qmd file in RStudio. Open the R_code_FirstAnalysis_PISAData.qmd file from the scripts folder in this project space. You can now run the code in the .qmd file and reproduce the research! 
+If the last 3 lines of code do not work. Please try running them directly in the console, it should work then.

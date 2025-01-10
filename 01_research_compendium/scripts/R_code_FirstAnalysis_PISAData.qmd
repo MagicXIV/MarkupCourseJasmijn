@@ -1,26 +1,41 @@
 ---
-title: "My Reproducible Manuscript"
+title: "Reproducible First Analysis of PISA Data"
 author: "Jasmijn Bazen"
-format: 
- pdf: default
-bibliography: ../docs/references.bib
+format: html
 runtime: shiny
+bibliography: ../docs/references.bib
 ---
+
 
 # R CODE
 ### R code of a small scale intermediate study to investigate the impact of motivation on the results of students partaking in the PISA test.
+This is an intermediary analysis for eventually evaluating the results of the official Dutch report on the PISA results [@PISAOfficialReport]. 
 
 ## Word of thanks: 
 I would like to thank my supervisors, Remco Feskens and Marieke van Onna for all the input they gave me throughout the making of this research report. 
 
-
 ## Load Libraries:
-```{r message=FALSE, warning=FALSE}
-if (!require("renv")) {
-    install.packages("renv", dependencies = TRUE)
-    library(renv)
+
+```{r}
+if (!require("devtools")) {
+    install.packages("devtools", dependencies = TRUE)
+    library(devtools)
   }
-renv::restore()
+
+devtools::install_github("MagicXIV/saveLavaanPlot", force = TRUE)
+library(saveLavaanPlot)
+
+# Package names
+packages <- c("tidyverse", "haven", "dplyr", "tidyr", "lavaan", "lavaanPlot", "shiny", "ggplot2")
+
+# Install packages not yet installed
+installed_packages <- packages %in% rownames(installed.packages())
+if (any(installed_packages == FALSE)) {
+  install.packages(packages[!installed_packages])
+}
+
+# Packages loading
+invisible(lapply(packages, library, character.only = TRUE))
 ```
 
 ## Read in data:
@@ -215,39 +230,39 @@ sum(item_difficulty$max_score)
 ```
 Maximum score is 26. No one got full points, or even one below full points. 
 
-If you want, you can run the code below and play around with the bin-width of this plot, and the previous plot on missing items per person, in a shiny-app: 
+If you want, you can remove the first # of every line and run the code below and play around with the bin-width of this plot, and the previous plot on missing items per person, in a shiny-app: 
 ```{r}
-ui1 <- fluidPage(
-  titlePanel("Interactive Plots"),
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("plot_type", "Choose a Plot:",
-                  choices = c("Missing Items per Person", "Total Score Distribution")),
-      sliderInput("binwidth", "Binwidth:", min = 1, max = 10, value = 2)
-    ),
-    mainPanel(
-      plotOutput("main_plot")
-    )
-  )
-)
-
-server1 <- function(input, output) {
-  output$main_plot <- renderPlot({
-    if (input$plot_type == "Missing Items per Person") {
-      ggplot(data, aes(x = missing_items)) +
-        geom_histogram(binwidth = input$binwidth, fill = "blue", color = "black") +
-        labs(title = "Missing Items per Person", x = "Number of Missing Items", y = "Frequency") +
-        theme_minimal()
-    } else if (input$plot_type == "Total Score Distribution") {
-      ggplot(total_scores, aes(x = total_score)) +
-        geom_histogram(binwidth = input$binwidth, fill = "blue", color = "black") +
-        labs(title = "Total Score Distribution", x = "Total Score", y = "Frequency") +
-        theme_minimal()
-    }
-  })
-}
-
-shinyApp(ui1, server1)
+# ui1 <- fluidPage(
+#   titlePanel("Interactive Plots"),
+#   sidebarLayout(
+#     sidebarPanel(
+#       selectInput("plot_type", "Choose a Plot:",
+#                   choices = c("Missing Items per Person", "Total Score Distribution")),
+#       sliderInput("binwidth", "Binwidth:", min = 1, max = 10, value = 2)
+#     ),
+#     mainPanel(
+#       plotOutput("main_plot")
+#     )
+#   )
+# )
+# 
+# server1 <- function(input, output) {
+#   output$main_plot <- renderPlot({
+#     if (input$plot_type == "Missing Items per Person") {
+#       ggplot(data, aes(x = missing_items)) +
+#         geom_histogram(binwidth = input$binwidth, fill = "blue", color = "black") +
+#         labs(title = "Missing Items per Person", x = "Number of Missing Items", y = "Frequency") +
+#         theme_minimal()
+#     } else if (input$plot_type == "Total Score Distribution") {
+#       ggplot(total_scores, aes(x = total_score)) +
+#         geom_histogram(binwidth = input$binwidth, fill = "blue", color = "black") +
+#         labs(title = "Total Score Distribution", x = "Total Score", y = "Frequency") +
+#         theme_minimal()
+#     }
+#   })
+# }
+# 
+# shinyApp(ui1, server1)
 ```
 
 
@@ -400,118 +415,20 @@ NLfit <- sem(model, data = NLdata)
 summary(NLfit, fit.measures = TRUE, standardized = TRUE)
 lavInspect(NLfit)
 
-# Plot the essence of the SEM model
-EmptyPlot <- lavaanPlot(
-    model = NLfit,
-    coefs = FALSE,          # Do not show path coefficients
-    stand = FALSE,          # Do not use standardized coefficients
-    stars = NULL,           # No significance stars
-    covs = FALSE            # Suppress covariance paths
-)
-
 DEfit <- sem(model, data = DEdata)
 summary(DEfit, fit.measures = TRUE, standardized = TRUE)
 lavInspect(DEfit)
 
-#plot the SEM model on the data of the Dutch students
-NLPlot <- lavaanPlot(
-  model = NLfit,
-  coefs = TRUE,      # Show path coefficients
-  stand = TRUE,      # Standardized coefficients
-  sig = 0.05,        # Display significance levels
-  stars = "regress"  # Add significance stars to regressions
-)
+library(saveLavaanPlot)
+unlink("~/.cache/htmlwidgets", recursive = TRUE)
 
-#plot the SEM model on the data of the German students
-DEPlot <- lavaanPlot(
-  model = DEfit,
-  coefs = TRUE,      # Show path coefficients
-  stand = TRUE,      # Standardized coefficients
-  sig = 0.05,        # Display significance levels
-  stars = "regress"  # Add significance stars to regressions
-)
+#If the lines of code below result in errors, please run them in the console.
+saveLavaanPlot::saveLavaanPlot(NLfit, "../results/SEMModelNL.png")
+saveLavaanPlot::saveLavaanPlot(DEfit, "../results/SEMModelDE.png")
+saveLavaanPlot::saveLavaanPlot(NLfit, "../results/EmptySEMModel.png", coefs = FALSE, stand = FALSE, stars = FALSE)
 
-
-saveLavaanPlot(NLfit, "../results/SEMModelNL.png")
 ```
-
-If you want, you can save the plots by running the next code chunk. Please note: they are already in the results folder as well:
-```{r}
-# Function to fit the SEM model, generate the plot, and save it
-save_sem_plots <- function(fit, file_name) {
-  sem_plot <- lavaanPlot(
-    model = fit,
-    coefs = TRUE,      # Show path coefficients
-    stand = TRUE,      # Standardized coefficients
-    sig = 0.05,        # Display significance levels
-    stars = "regress"  # Add significance stars to regressions
-  )
-  
-  # Save as SVG and convert to TIFF
-  svg_file <- tempfile(fileext = ".svg")
-  export_svg(sem_plot) %>% writeLines(svg_file)
-  rsvg_png(svg_file, file_name) 
-}
-
-# Save the plots
-save_sem_plots(NLfit, "../results/SEMModelNL.png")
-save_sem_plots(DEfit, "../results/SEMModelDE.png")
-```
-
-
-```{r}
-# Function to generate lavaanPlot
-generate_sem_plot <- function(fit_object) {
-  lavaanPlot(
-  model = fit_object,
-  coefs = TRUE,      # Show path coefficients
-  stand = TRUE,      # Standardized coefficients
-  sig = 0.05,        # Display significance levels
-  stars = "regress"  # Add significance stars to regressions
-)
-}
-
-# Define UI
-ui2 <- fluidPage(
-  titlePanel("SEM Model Viewer"),
-  sidebarLayout(
-    sidebarPanel(
-      selectInput("dataset", "Select Dataset:", 
-                  choices = c("Dutch (NL)", "German (DE)"))
-    ),
-    mainPanel(
-      plotOutput("semPlot")
-    )
-  )
-)
-
-# Define Server
-# Define Server
-server2 <- function(input, output) {
-  output$semPlot <- renderPlot({
-    if (input$dataset == "Dutch (NL)") {
-      lavaanPlot(
-        model = NLfit,
-        coefs = TRUE,      # Show path coefficients
-        stand = TRUE,      # Standardized coefficients
-        sig = 0.05,        # Display significance levels
-        stars = "regress"  # Add significance stars to regressions
-      )
-    } else if (input$dataset == "German (DE)") {
-      lavaanPlot(
-        model = DEfit,
-        coefs = TRUE,      # Show path coefficients
-        stand = TRUE,      # Standardized coefficients
-        sig = 0.05,        # Display significance levels
-        stars = "regress"  # Add significance stars to regressions
-      )
-    }
-  })
-}
-
-# Run the app
-shinyApp(ui = ui2, server = server2)
-```
+If the last 3 lines of code result in errors, please run them in the console.
 
 
 ### This is the end of the R code! 
