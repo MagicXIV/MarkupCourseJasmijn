@@ -20,6 +20,7 @@ shiny_1.8.1.1
 ggplot2_3.4.4
 devtools_2.4.5
 saveLavaanPlot_0.2.2
+saveLavaanPlot_0.3.0
 
 
 # The folder structure
@@ -47,5 +48,5 @@ The figures in the results folder are project-generated.
 
 
 How to use:
-Start up the R_code_FirstAnalysis_PISAData.qmd file in RStudio. Open the R_code_FirstAnalysis_PISAData.qmd file from the scripts folder in this project space. You can now run the code in the .qmd file and reproduce the research! 
-If the last 3 lines of code do not work. Please try running them directly in the console, it should work then.
+Start up the R_code_FirstAnalysis_PISAData.Rproj file in RStudio. Open the R_code_FirstAnalysis_PISAData.qmd file from the scripts folder in this project space. You can now run the code in the .qmd file and reproduce the research! 
+If the last 3 lines of code do not work. Please try running them directly in the console, it should work then. 
