@@ -22,8 +22,11 @@ if (!require("devtools")) {
     library(devtools)
   }
 
+#please select: 1: All
 devtools::install_github("MagicXIV/saveLavaanPlot", force = TRUE)
 library(saveLavaanPlot)
+devtools::install_github("MagicXIV/saveLavaanPlot2", force = TRUE)
+library(saveLavaanPlot2)
 
 # Package names
 packages <- c("tidyverse", "haven", "dplyr", "tidyr", "lavaan", "lavaanPlot", "shiny", "ggplot2")
@@ -419,9 +422,14 @@ DEfit <- sem(model, data = DEdata)
 summary(DEfit, fit.measures = TRUE, standardized = TRUE)
 lavInspect(DEfit)
 
-library(saveLavaanPlot)
-unlink("~/.cache/htmlwidgets", recursive = TRUE)
 
+# The second package, only saving the plots, not displaying them here. 
+saveLavaanPlot2::saveLavaanPlot2(NLfit, "../results/SEMModelNL1.png")
+saveLavaanPlot2::saveLavaanPlot2(DEfit, "../results/SEMModelDE1.png")
+saveLavaanPlot2::saveLavaanPlot2(NLfit, "../results/EmptySEMModel1.png", coefs = FALSE, stand = FALSE, stars = FALSE)
+
+
+#The original package, also displaying the plots here. 
 #If the lines of code below result in errors, please run them in the console.
 saveLavaanPlot::saveLavaanPlot(NLfit, "../results/SEMModelNL.png")
 saveLavaanPlot::saveLavaanPlot(DEfit, "../results/SEMModelDE.png")
